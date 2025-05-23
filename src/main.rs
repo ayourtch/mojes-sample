@@ -245,6 +245,7 @@ use std::sync::{Arc, Mutex};
 
 #[to_js]
 fn make_get_request(url: &str) {
+    println!("GET request start...");
     let xhr_orig = Arc::new(Mutex::new(XMLHttpRequest::new()));
     /*
         let f1 = move || {
@@ -273,7 +274,7 @@ fn make_get_request(url: &str) {
         let xhr = xhr2.lock().unwrap();
         console.log(&format!("Ready state changed: {}", xhr.readyState));
 
-        if xhr.readyState == xhr_ready_state::DONE {
+        if xhr.readyState == 4 { // xhr_ready_state::DONE {
             if xhr.status == 200 {
                 console.log(&format!("Success: {}", xhr.responseText));
             } else {
