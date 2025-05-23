@@ -30,6 +30,9 @@ fn factorial(n: i32) -> i32 {
 #[to_js]
 fn testFunc() {
     let element = document.getElementById("test");
+    let mut elt = document.getElementById("debugs").unwrap();
+    elt.insertAdjacentHTML("beforeend", "<p>New content</p>");
+
     match element {
         Some(el) => {
             console.log(&format!("Found element with id: {}", el.id));
@@ -79,14 +82,15 @@ fn domExample() {
 fn styleExample() {
     let element = document.getElementById("styledElement");
     match element {
-        Some(el) => {
+        Some(mut el) => {
             let styles = window.getComputedStyle(&el);
             console.log(&format!("Current color: {}", styles.color));
 
             // Mock style manipulation (in real implementation, element.style would be mutable)
-            console.log("Would set element.style.backgroundColor = 'red'");
-            console.log("Would set element.style.fontSize = '20px'");
-            //el.style.backgroundColor = "red";
+            el.setAttribute("style", "background: red; fontSize: 20px");
+            // FIXME: el.classList.toggle("test");
+            // FIXME: el.classList.add("err");
+            // FIXME: el.classList.remove("success");
         }
         None => {
             console.error("Styled element not found");
@@ -362,6 +366,8 @@ fn hello_world(_: &mut Request) -> IronResult<Response> {
     <div class="container">
         <h1>Rust-to-JavaScript Transpiler Demo</h1>
         <p>This demo shows Rust functions transpiled to JavaScript using <strong>native camelCase DOM API method names</strong>.</p>
+        <div id="debugs" style="width:100%; height: 100px; border:solid 1px; overflow: auto;">
+        </div>
         
         <div class="demo-section">
             <h3>Basic Functions</h3>
