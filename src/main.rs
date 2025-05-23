@@ -26,12 +26,17 @@ fn factorial(n: i32) -> i32 {
     result
 }
 
+#[to_js]
+fn log_string(s: &str) {
+    let mut elt = document.getElementById("debugs").unwrap();
+    elt.insertAdjacentHTML("beforeend", &format!("<p>New content: {}</p>", s));
+}
+
 // Function using camelCase DOM API methods
 #[to_js]
 fn testFunc() {
     let element = document.getElementById("test");
-    let mut elt = document.getElementById("debugs").unwrap();
-    elt.insertAdjacentHTML("beforeend", "<p>New content</p>");
+    log_string("bla");
 
     match element {
         Some(el) => {
@@ -84,7 +89,7 @@ fn styleExample() {
     match element {
         Some(mut el) => {
             let styles = window.getComputedStyle(&el);
-            console.log(&format!("Current color: {}", styles.color));
+            log_string(&format!("Current color: {}", styles.color));
 
             // Mock style manipulation (in real implementation, element.style would be mutable)
             el.setAttribute("style", "background: red; fontSize: 20px");
@@ -106,6 +111,7 @@ fn eventExample() {
     for (index, element) in elements.iter().enumerate() {
         console.log(&format!("Adding event listener to element {}", index));
         element.addEventListener("click", || {
+            alert("clicked");
             console.log("Element clicked!");
         });
     }
@@ -231,6 +237,278 @@ fn storageExample() {
     } else {
         println!("Local storage value unset");
     };
+}
+
+// XHR stuff
+
+#[to_js]
+fn make_get_request(url: &str) {
+    let mut xhr = XMLHttpRequest::new();
+
+    // Set up event handlers using closures
+    xhr.addEventListener("readystatechange", || {
+        console.log(&format!("Ready state changed: {}", xhr.readyState));
+
+        if xhr.readyState == xhr_ready_state::DONE {
+            if xhr.status == 200 {
+                console.log(&format!("Success: {}", xhr.responseText));
+            } else {
+                console.log(&format!("Error: {} {}", xhr.status, xhr.statusText));
+            }
+        }
+    });
+
+    xhr.addEventListener("load", || {
+        console.log("Request completed successfully");
+    });
+
+    xhr.addEventListener("error", || {
+        console.log("Request failed");
+    });
+
+    // Open and send the request
+    xhr.open("GET", url);
+    xhr.setRequestHeader("Accept", "application/json");
+    xhr.send();
+}
+
+#[to_js]
+fn make_post_request(url: &str, data: &str) {
+    let mut xhr = XMLHttpRequest::new();
+
+    // Handle different response states
+    xhr.addEventListener("readystatechange", || match xhr.readyState {
+        xhr_ready_state::OPENED => {
+            console.log("Request opened");
+        }
+        xhr_ready_state::HEADERS_RECEIVED => {
+            console.log("Headers received");
+            console.log(&format!(
+                "Content-Type: {:?}",
+                xhr.getResponseHeader("content-type")
+            ));
+        }
+        xhr_ready_state::LOADING => {
+            console.log("Loading response...");
+        }
+        xhr_ready_state::DONE => {
+            console.log("Request completed");
+            handle_response(&xhr);
+        }
+        _ => {}
+    });
+
+    // Set up progress tracking
+    xhr.addEventListener("progress", || {
+        console.log("Download progress...");
+    });
+
+    xhr.addEventListener("loadstart", || {
+        console.log("Request started");
+    });
+
+    xhr.addEventListener("loadend", || {
+        console.log("Request ended");
+    });
+
+    // Configure and send request
+    xhr.open("POST", url);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.setRequestHeader("Accept", "application/json");
+    xhr.send_with_body(Some(data));
+}
+
+#[to_js]
+fn handle_response(xhr: &XMLHttpRequest) {
+    if xhr.status >= 200 && xhr.status < 300 {
+        // Success
+        console.log(&format!("Response: {}", xhr.responseText));
+
+        // Parse JSON response (in a real implementation, you'd have proper JSON parsing)
+        if let Some(content_type) = xhr.getResponseHeader("content-type") {
+            if content_type.contains("application/json") {
+                console.log("Received JSON response");
+                // Handle JSON data here
+            }
+        }
+    } else if xhr.status >= 400 && xhr.status < 500 {
+        // Client error
+        console.log(&format!("Client error: {} {}", xhr.status, xhr.statusText));
+    } else if xhr.status >= 500 {
+        // Server error
+        console.log(&format!("Server error: {} {}", xhr.status, xhr.statusText));
+    } else {
+        // Other status codes
+        console.log(&format!(
+            "Unexpected status: {} {}",
+            xhr.status, xhr.statusText
+        ));
+    }
+}
+
+#[to_js]
+fn upload_with_progress(url: &str, file_data: &str) {
+    let mut xhr = XMLHttpRequest::new();
+
+    // Main request event handlers
+    xhr.addEventListener("load", || {
+        console.log("Upload completed");
+    });
+
+    xhr.addEventListener("error", || {
+        console.log("Upload failed");
+    });
+
+    xhr.addEventListener("timeout", || {
+        console.log("Upload timed out");
+    });
+
+    // Configure upload tracking if available
+    if let Some(ref mut upload) = xhr.upload {
+        upload.addEventListener("progress", || {
+            console.log("Upload progress...");
+        });
+
+        upload.addEventListener("load", || {
+            console.log("Upload data transfer completed");
+        });
+
+        upload.addEventListener("error", || {
+            console.log("Upload error occurred");
+        });
+    }
+
+    // Set timeout
+    xhr.timeout = 30000; // 30 seconds
+
+    xhr.open("POST", url);
+    xhr.setRequestHeader("Content-Type", "multipart/form-data");
+    xhr.send_with_body(Some(file_data));
+}
+
+#[to_js]
+fn abort_request_example() {
+    let mut xhr = XMLHttpRequest::new();
+
+    xhr.addEventListener("abort", || {
+        console.log("Request was aborted");
+    });
+
+    xhr.open("GET", "https://api.example.com/large-file");
+    xhr.send();
+
+    // Abort after 5 seconds (in a real scenario, this might be triggered by user action)
+    setTimeout(
+        move || {
+            xhr.abort();
+        },
+        5000,
+    );
+}
+
+#[to_js]
+fn fetch_with_credentials(url: &str) {
+    let mut xhr = XMLHttpRequest::new();
+
+    // Enable credentials for cross-origin requests
+    xhr.withCredentials = true;
+
+    xhr.addEventListener("readystatechange", || {
+        if xhr.readyState == xhr_ready_state::DONE {
+            if xhr.status == 200 {
+                console.log("Authenticated request successful");
+                console.log(&xhr.responseText);
+            } else if xhr.status == 401 {
+                console.log("Authentication required");
+            } else if xhr.status == 403 {
+                console.log("Access forbidden");
+            }
+        }
+    });
+
+    xhr.open("GET", url);
+    xhr.setRequestHeader("Authorization", "Bearer your-token-here");
+    xhr.send();
+}
+
+#[to_js]
+fn handle_different_response_types(url: &str, response_type: &str) {
+    let mut xhr = XMLHttpRequest::new();
+
+    // Set response type before sending
+    xhr.responseType = response_type.to_string();
+
+    xhr.addEventListener("load", || {
+        match xhr.responseType.as_str() {
+            // "text" | "" => {
+            "text" => {
+                console.log(&format!("Text response: {}", xhr.responseText));
+            }
+            "" => {
+                console.log(&format!("Text response: {}", xhr.responseText));
+            }
+            "json" => {
+                console.log("JSON response received");
+                // In a real implementation, xhr.response would contain parsed JSON
+                console.log(&xhr.response);
+            }
+            "blob" => {
+                console.log("Blob response received");
+            }
+            "arraybuffer" => {
+                console.log("ArrayBuffer response received");
+            }
+            "document" => {
+                console.log("Document response received");
+            }
+            _ => {
+                console.log(&format!("Unknown response type: {}", xhr.responseType));
+            }
+        }
+    });
+
+    xhr.open("GET", url);
+    xhr.send();
+}
+
+// Example of a utility function for making AJAX calls
+#[to_js]
+fn ajax_get(url: &str, success_callback: fn(&str), error_callback: fn(u16, &str)) {
+    let mut xhr = XMLHttpRequest::new();
+
+    xhr.addEventListener("readystatechange", || {
+        if xhr.readyState == xhr_ready_state::DONE {
+            if xhr.status >= 200 && xhr.status < 300 {
+                success_callback(&xhr.responseText);
+            } else {
+                error_callback(xhr.status, &xhr.statusText);
+            }
+        }
+    });
+
+    xhr.open("GET", url);
+    xhr.setRequestHeader("Accept", "application/json");
+    xhr.send();
+}
+
+#[to_js]
+fn ajax_post(url: &str, data: &str, success_callback: fn(&str), error_callback: fn(u16, &str)) {
+    let mut xhr = XMLHttpRequest::new();
+
+    xhr.addEventListener("readystatechange", || {
+        if xhr.readyState == xhr_ready_state::DONE {
+            if xhr.status >= 200 && xhr.status < 300 {
+                success_callback(&xhr.responseText);
+            } else {
+                error_callback(xhr.status, &xhr.statusText);
+            }
+        }
+    });
+
+    xhr.open("POST", url);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.setRequestHeader("Accept", "application/json");
+    xhr.send_with_body(Some(data));
 }
 
 struct ResponseTime;
