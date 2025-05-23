@@ -1,0 +1,10 @@
+[package]
+name = "irontest"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+iron = { git = "https://github.com/ayourtch/iron" }
+time = "0.1"
+mojes = { path = "../mojes/mojes" }
+linkme = "0.3"
