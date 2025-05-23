@@ -241,12 +241,36 @@ fn storageExample() {
 
 // XHR stuff
 
+use std::sync::{Arc, Mutex};
+
 #[to_js]
 fn make_get_request(url: &str) {
-    let mut xhr = XMLHttpRequest::new();
+    let xhr_orig = Arc::new(Mutex::new(XMLHttpRequest::new()));
+    /*
+        let f1 = move || {
+            console.log(&xhr1.lock().unwrap().responseText);
+            console.log("Request completed successfully");
+        };
+    */
 
+    let mut xhr = xhr_orig.lock().unwrap();
+    // xhr.addEventListener("load", f1);
+
+    let xhr1 = xhr_orig.clone();
+    xhr.addEventListener("load", move || {
+        console.log(&xhr1.lock().unwrap().responseText);
+        console.log("Request completed successfully");
+    });
+
+    xhr.addEventListener("error", || {
+        console.log("Request failed");
+    });
+
+    let xhr2 = xhr_orig.clone();
     // Set up event handlers using closures
-    xhr.addEventListener("readystatechange", || {
+    xhr.addEventListener("readystatechange", move || {
+        console.log("ready state changed");
+        let xhr = xhr2.lock().unwrap();
         console.log(&format!("Ready state changed: {}", xhr.readyState));
 
         if xhr.readyState == xhr_ready_state::DONE {
@@ -258,19 +282,13 @@ fn make_get_request(url: &str) {
         }
     });
 
-    xhr.addEventListener("load", || {
-        console.log("Request completed successfully");
-    });
-
-    xhr.addEventListener("error", || {
-        console.log("Request failed");
-    });
-
     // Open and send the request
     xhr.open("GET", url);
     xhr.setRequestHeader("Accept", "application/json");
     xhr.send();
 }
+
+/* FIXME LATER
 
 #[to_js]
 fn make_post_request(url: &str, data: &str) {
@@ -511,6 +529,8 @@ fn ajax_post(url: &str, data: &str, success_callback: fn(&str), error_callback: 
     xhr.send_with_body(Some(data));
 }
 
+END FIXME LATER */
+
 struct ResponseTime;
 
 impl typemap::Key for ResponseTime {
@@ -638,7 +658,20 @@ fn hello_world(_: &mut Request) -> IronResult<Response> {
             margin: 10px 0;
         }}
     </style>
-    <script>{}</script>
+    <script>
+class Mutex {{
+  constructor(inner) {{
+    this.inner = inner;
+  }}
+
+  lock() {{
+    return this.inner;
+  }}
+}}
+
+{}
+
+</script>
 </head>
 <body>
     <div class="container">
@@ -653,6 +686,7 @@ fn hello_world(_: &mut Request) -> IronResult<Response> {
             <button onclick="testFunc()">Test Basic Function</button>
             <button onclick="console.log('Simple calculation: ' + add(5, 3))">Test Add Function</button>
             <button onclick="console.log('Factorial of 5: ' + factorial(5))">Test Factorial</button>
+            <button onclick="make_get_request('http://localhost:3000/')">Test XHR (see console)</button>
         </div>
 
         <div class="demo-section">
