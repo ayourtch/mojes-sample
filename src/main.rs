@@ -2,9 +2,35 @@ use iron::prelude::*;
 use iron::{AfterMiddleware, BeforeMiddleware, typemap};
 use time::precise_time_ns;
 
-use mojes::{js_type, to_js};
+use mojes::{js_object, js_type, to_js};
 
 use mojes::dom::*;
+
+#[js_type]
+#[derive(Debug)]
+struct Person {
+    name: String,
+    age: u32,
+}
+
+#[js_object]
+impl Person {
+    fn new(name: String, age: u32) -> Self {
+        Person { name, age }
+    }
+
+    fn greet(&self) -> String {
+        format!(
+            "Hello, I'm {} and i am {} years old",
+            self.name,
+            self.get_age()
+        )
+    }
+
+    fn get_age(&self) -> u32 {
+        self.age
+    }
+}
 
 // Simple function with basic operations
 #[to_js]
@@ -171,18 +197,26 @@ fn navigationExample() {
 #[to_js]
 fn formExample() {
     console.log("FORM");
+    let name = document.getElementsByName("name")[0].value.clone();
+    let age = Number(&document.getElementsByName("age")[0].value) as u32;
+    let p = Person { name, age };
+    println!("{}", p.greet());
     let form = document.querySelector("form");
     match form {
         Some(f) => {
             let inputs = f.querySelectorAll("input");
             for (i, input) in inputs.iter().enumerate() {
-                console.log(&format!("Input {}: value = '{}'", i, input.value));
+                console.log(&format!(
+                    "Input {} {}: value = '{}'",
+                    i, input.name, input.value
+                ));
             }
         }
         None => {
             console.log("No form found");
         }
     }
+    println!("FIXME: This is unreachable");
 }
 
 // Animation example
@@ -274,7 +308,8 @@ fn make_get_request(url: &str) {
         let xhr = xhr2.lock().unwrap();
         console.log(&format!("Ready state changed: {}", xhr.readyState));
 
-        if xhr.readyState == 4 { // xhr_ready_state::DONE {
+        if xhr.readyState == 4 {
+            // xhr_ready_state::DONE {
             if xhr.status == 200 {
                 console.log(&format!("Success: {}", xhr.responseText));
             } else {
