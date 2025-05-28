@@ -62,6 +62,7 @@ fn log_string(s: &str) {
 #[to_js]
 fn testFunc() {
     let element = document.getElementById("test");
+    let x: i32 = 23;
     log_string("bla");
 
     match element {
@@ -198,9 +199,11 @@ fn navigationExample() {
 fn formExample() {
     console.log("FORM");
     let name = document.getElementsByName("name")[0].value.clone();
-    let age = Number(&document.getElementsByName("age")[0].value) as u32;
+    // let age: u32 = Number(&document.getElementsByName("age")[0].value) as u32;
+    let age: u32 = document.getElementsByName("age")[0].value.parse().unwrap();
     let p = Person { name, age };
     println!("{}", p.greet());
+    alert(&format!("Person: {}", p.greet()));
     let form = document.querySelector("form");
     match form {
         Some(f) => {
@@ -702,6 +705,16 @@ class Mutex {{
 
   lock() {{
     return this.inner;
+  }}
+}}
+
+class Arc {{
+  constructor(inner) {{
+    this.inner = inner;
+  }}
+
+  lock() {{
+    return this.inner.lock();
   }}
 }}
 
