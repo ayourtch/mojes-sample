@@ -99,8 +99,8 @@ fn domExample() {
     match button {
         Some(btn) => {
             console.log(&format!("Button found: {}", btn.id));
-            btn.addEventListener("click", || {
-                console.log("Button clicked!");
+            btn.addEventListener("click", |e| {
+                console.log(&format!("Button clicked! event {:?}", e.target));
             });
         }
         None => {
@@ -137,14 +137,14 @@ fn eventExample() {
     let elements = document.querySelectorAll(".clickable");
     for (index, element) in elements.iter().enumerate() {
         console.log(&format!("Adding event listener to element {}", index));
-        element.addEventListener("click", || {
+        element.addEventListener("click", |e| {
             alert("clicked");
-            console.log("Element clicked!");
+            console.log(&format!("Element clicked!: {}", &e.r#type));
         });
     }
 
     // Window events
-    window.addEventListener("resize", || {
+    window.addEventListener("resize", |e| {
         console.log(&format!(
             "Window resized to: {}x{}",
             window.innerWidth(),
@@ -798,6 +798,15 @@ class Arc {{
     </div>
 
     <script>
+
+/* Bring your own JS debug convert function */
+function debug_repr(obj) {{
+    if (obj === null) return "null";
+    if (obj === undefined) return "undefined";
+    if (typeof obj === "string") return `"${{obj}}"`;
+    if (typeof obj === "object") return JSON.stringify(obj);
+    return String(obj);
+}}
         // Additional JavaScript to enhance the demo
         console.log('=== Rust-to-JS Transpiler Demo Started ===');
         
